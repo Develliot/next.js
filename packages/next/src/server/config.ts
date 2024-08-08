@@ -1075,7 +1075,7 @@ export default async function loadConfig(
     ) {
       curLog.warn(
         `Absolute URL assetPrefix "${userConfig.assetPrefix}" should be used for setting up a CDN.\n` +
-          'Usage in development phase is not recommended and may break the app.\n' +
+          'Usage in development phase is not expected and may break the app.\n' +
           'See more info here https://nextjs.org/docs/app/api-reference/next-config-js/assetPrefix#set-up-a-cdn'
       )
     }
