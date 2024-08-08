@@ -1069,17 +1069,6 @@ export default async function loadConfig(
       }
     }
 
-    if (
-      phase === PHASE_DEVELOPMENT_SERVER &&
-      URL.canParse(userConfig.assetPrefix ?? '')
-    ) {
-      curLog.warn(
-        `Absolute URL assetPrefix "${userConfig.assetPrefix}" should be used for setting up a CDN.\n` +
-          'Usage in development phase is not expected and may break the app.\n' +
-          'See more info here https://nextjs.org/docs/app/api-reference/next-config-js/assetPrefix#set-up-a-cdn'
-      )
-    }
-
     if (userConfig.target && userConfig.target !== 'server') {
       throw new Error(
         `The "target" property is no longer supported in ${configFileName}.\n` +
