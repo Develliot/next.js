@@ -275,6 +275,45 @@ impl Asset for JsonKeySource {
     }
 }
 
+/// A [Source] without any references to other [Source]s which rewrites JSON5 into JSON.
+#[turbo_tasks::value]
+pub struct Json5Source {
+    pub path: Vc<FileSystemPath>,
+}
+
+#[turbo_tasks::value_impl]
+impl Json5Source {
+    #[turbo_tasks::function]
+    pub fn new(path: Vc<FileSystemPath>) -> Vc<Self> {
+        Self::cell(Json5Source { path })
+    }
+}
+
+#[turbo_tasks::value_impl]
+impl Source for Json5Source {
+    #[turbo_tasks::function]
+    fn ident(&self) -> Vc<AssetIdent> {
+        AssetIdent::from_path(self.path)
+    }
+}
+
+#[turbo_tasks::value_impl]
+impl Asset for Json5Source {
+    #[turbo_tasks::function]
+    async fn content(&self) -> Result<Vc<AssetContent>> {
+        let file_type = &*self.path.get_type().await?;
+        match file_type {
+            FileSystemEntryType::File => Ok(AssetContent::file(
+                File::from(self.path.read_json5().content().await?.to_string()).into(),
+            )),
+            FileSystemEntryType::NotFound => {
+                Ok(AssetContent::File(FileContent::NotFound.cell()).cell())
+            }
+            _ => Err(anyhow::anyhow!("Invalid file type {:?}", file_type)),
+        }
+    }
+}
+
 #[turbo_tasks::function]
 pub(crate) async fn config_loader_source(
     project_path: Vc<FileSystemPath>,
@@ -282,11 +321,19 @@ pub(crate) async fn config_loader_source(
 ) -> Result<Vc<Box<dyn Source>>> {
     let postcss_config_path_value = &*postcss_config_path.await?;
 
-    if postcss_config_path_value.file_name() == "package.json" {
+    let postcss_config_path_filename = postcss_config_path_value.file_name();
+
+    if postcss_config_path_filename == "package.json" {
         return Ok(Vc::upcast(JsonKeySource::new(
             postcss_config_path,
             Vc::cell("postcss".into()),
         )));
+    }
+
+    if postcss_config_path_value.path.ends_with(".json")
+        || postcss_config_path_filename == ".postcssrc"
+    {
+        return Ok(Vc::upcast(Json5Source::new(postcss_config_path)));
     }
 
     // We can only load js files with `import()`.
